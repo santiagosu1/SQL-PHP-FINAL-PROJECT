@@ -9,6 +9,13 @@
         exit;
     }
 
+    // Protected endpoint: must be logged in
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+        exit;
+    }
+
     $body = json_decode(file_get_contents('php://input'), true);
 
     $title = trim($body['title'] ?? '');
