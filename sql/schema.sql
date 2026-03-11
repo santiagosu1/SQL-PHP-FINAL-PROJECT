@@ -13,7 +13,7 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    role ENUM('admin','user') DEFAULT 'user',
+    role ENUM('admin','user') NOT NULL DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -26,11 +26,11 @@ CREATE TABLE events (
     event_time TIME,
     location VARCHAR(150),
     venue VARCHAR(200),
-    price DECIMAL(10,2),
+    price DECIMAL(10,2) NOT NULL,
     category VARCHAR(100),
-    available_tickets INT,
-    sold_tickets INT,
-    created_by INT,
+    available_tickets INT NOT NULL DEFAULT 0,
+    sold_tickets INT NOT NULL DEFAULT 0,
+    created_by INT NOT NULL,
     FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
@@ -42,12 +42,11 @@ CREATE TABLE tickets (
     quantity INT NOT NULL,
     total_price DECIMAL(10,2) NOT NULL,
     purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (event_id) REFERENCES events(id)
 );
 
--- AUDIT LOGS
+-- AUDIT LOGS TABLE
 CREATE TABLE audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -55,6 +54,5 @@ CREATE TABLE audit_logs (
     entity VARCHAR(50) NOT NULL,
     entity_id VARCHAR(50) NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
