@@ -1,4 +1,5 @@
 <?php
+    session_start();
     header('Content-Type: application/json');
     require_once __DIR__ . '/../config/database.php';
     
@@ -33,12 +34,14 @@ try {
 
     $new_id = 'evt-' . rand(10000, 99999);
 
+    $created_by = !empty($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+
     $stmt = $conn->prepare(
-        'INSERT INTO events (id, title, description, event_date, event_time, location, venue, price, category, available_tickets, sold_tickets) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO events (id, title, description, event_date, event_time, location, venue, price, category, available_tickets, sold_tickets, created_by) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     
-    $stmt->execute([$new_id, $title, $description, $event_date, $event_time, $location, $venue, $price, $category, $available_tick, $sold_tick]);
+    $stmt->execute([$new_id, $title, $description, $event_date, $event_time, $location, $venue, $price, $category, $available_tick, $sold_tick, $created_by]);
 
     http_response_code(201);
     echo json_encode([

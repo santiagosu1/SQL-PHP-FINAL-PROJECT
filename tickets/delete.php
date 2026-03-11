@@ -1,11 +1,24 @@
 <?php
 
+session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed. Use DELETE']);
+    exit;
+}
+
+// Authorization: admin only
+if (empty($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+    exit;
+}
+if ($_SESSION['role'] !== 'admin') {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete tickets.']);
     exit;
 }
 
