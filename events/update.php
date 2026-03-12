@@ -29,6 +29,47 @@
     $available_tick = isset($body['available_tickets']) ? (int)$body['available_tickets'] : null;
     $sold_tick      = isset($body['sold_tickets']) ? (int)$body['sold_tickets'] : null;
 
+    // Sanitization
+    $id = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+    $title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $description = $description !== null ? htmlspecialchars($description, ENT_QUOTES, 'UTF-8') : null;
+    $event_time = $event_time !== null ? htmlspecialchars($event_time, ENT_QUOTES, 'UTF-8') : null;
+    $location = $location !== null ? htmlspecialchars($location, ENT_QUOTES, 'UTF-8') : null;
+    $venue = $venue !== null ? htmlspecialchars($venue, ENT_QUOTES, 'UTF-8') : null;
+    $category = $category !== null ? htmlspecialchars($category, ENT_QUOTES, 'UTF-8') : null;
+
+    // Validation
+    if (!preg_match('/^[A-Za-z0-9\-\_]+$/', $id)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid event ID format.']);
+        exit;
+    }
+
+    $d = DateTime::createFromFormat('Y-m-d', $event_date);
+    if (!$d || $d->format('Y-m-d') !== $event_date) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Invalid event_date format. Use YYYY-MM-DD.']);
+        exit;
+    }
+
+    if ($price !== null && $price < 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Price must be non-negative.']);
+        exit;
+    }
+
+    if ($available_tick !== null && $available_tick < 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'available_tickets must be non-negative.']);
+        exit;
+    }
+
+    if ($sold_tick !== null && $sold_tick < 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'sold_tickets must be non-negative.']);
+        exit;
+    }
+
     if (empty($id) || empty($title) || empty($event_date)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'ID, title, and event_date are required.']);

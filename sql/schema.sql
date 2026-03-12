@@ -29,9 +29,7 @@ CREATE TABLE events (
     price DECIMAL(10,2) NOT NULL,
     category VARCHAR(100),
     available_tickets INT NOT NULL DEFAULT 0,
-    sold_tickets INT NOT NULL DEFAULT 0,
-    created_by INT NOT NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id)
+    sold_tickets INT NOT NULL DEFAULT 0
 );
 
 -- TICKETS TABLE

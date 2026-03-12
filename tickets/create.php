@@ -21,7 +21,9 @@
     $event_id = trim($body['event_id'] ?? '');
     $quantity = isset($body['quantity']) ? (int)$body['quantity'] : 0;
 
-    if (empty($event_id) || $quantity <= 0) {
+    // Sanitization & validation
+    $event_id = htmlspecialchars($event_id, ENT_QUOTES, 'UTF-8');
+    if (empty($event_id) || !preg_match('/^[A-Za-z0-9\-\_]+$/', $event_id) || $quantity <= 0) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'event_id and a valid quantity are required.']);
         exit;

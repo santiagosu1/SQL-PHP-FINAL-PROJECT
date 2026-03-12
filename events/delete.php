@@ -24,9 +24,11 @@
     $body = json_decode(file_get_contents('php://input'), true);
     $id = trim($body['id'] ?? '');
 
-    if (empty($id)) {
+    // Sanitization & validation
+    $id = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+    if (empty($id) || !preg_match('/^[A-Za-z0-9\-\_]+$/', $id)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Event ID is required to delete.']);
+        echo json_encode(['success' => false, 'error' => 'Valid event ID is required to delete.']);
         exit;
     }
 

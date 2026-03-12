@@ -15,6 +15,12 @@
         exit;
     }
 
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete tickets.']);
+        exit;
+    }
+
     $body = json_decode(file_get_contents('php://input'), true);
     $id = isset($body['id']) ? (int)$body['id'] : 0;
 

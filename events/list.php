@@ -9,6 +9,14 @@
     }
 
     $id = isset($_GET['id']) ? trim($_GET['id']) : '';
+    if ($id !== '') {
+        $id = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+        if (!preg_match('/^[A-Za-z0-9\-\_]+$/', $id)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid event ID format.']);
+            exit;
+        }
+    }
 
     try{
         $db = new Database();
