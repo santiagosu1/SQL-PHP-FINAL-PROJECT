@@ -18,13 +18,14 @@
 
     $body = json_decode(file_get_contents('php://input'), true);
 
-    $user_id  = isset($body['user_id']) ? (int)$body['user_id'] : 0;
+    // Always take user_id from session — never trust the request body
+    $user_id  = (int)$_SESSION['user_id'];
     $event_id = trim($body['event_id'] ?? '');
     $quantity = isset($body['quantity']) ? (int)$body['quantity'] : 0;
 
-    if ($user_id <= 0 || empty($event_id) || $quantity <= 0) {
+    if (empty($event_id) || $quantity <= 0) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'user_id, event_id and a valid quantity are required.']);
+        echo json_encode(['success' => false, 'error' => 'event_id and a valid quantity are required.']);
         exit;
     }
 
