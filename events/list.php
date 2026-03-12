@@ -1,29 +1,54 @@
 <?php
     header('Content-Type: application/json');
-
     require_once __DIR__ . '/../config/database.php';
 
-    if($_SERVER['REQUEST_METHOD'] !== 'GET'){
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Method not allowed. Use GET']);
         exit;
     }
 
+    $id = isset($_GET['id']) ? trim($_GET['id']) : '';
+
     try{
         $db = new Database();
         $conn = $db->connect();
 
-        $stmt = $conn->prepare('SELECT * FROM events ORDER BY event_date ASC');
-        $stmt->execute();
+        if ($id !== '') {
+            
+            $stmt = $conn->prepare('SELECT * FROM events WHERE id = ?');
+            $stmt->execute([$id]);
 
-        $events = $stmt->fetchAll();
+            $event = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'data' => $events,
-            'message' => 'Events got correctly.'
-        ]);
+            if (!$event) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'error' => 'Event not found.']);
+                exit;
+            }
+
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'data' => $event,
+                'message' => 'Event got correctly.'
+            ]);
+
+        } else {
+            
+            $stmt = $conn->prepare('SELECT * FROM events ORDER BY event_date ASC');
+            $stmt->execute();
+
+            $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'data' => $events,
+                'message' => 'Events got correctly.'
+            ]);
+        }
+
     } catch(PDOException $e) {
         error_log('[events/list] DB error: ' . $e->getMessage());
         http_response_code(500);

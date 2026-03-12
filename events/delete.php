@@ -1,64 +1,64 @@
 <?php
-session_start();
-header('Content-Type: application/json');
-require_once __DIR__ . '/../config/database.php';
+    session_start();
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/../config/database.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed. Use DELETE']);
-    exit;
-}
-
-if (empty($_SESSION['user_id'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'error' => 'Authentication required.']);
-    exit;
-}
-
-if ($_SESSION['role'] !== 'admin') {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete events.']);
-    exit;
-}
-
-$body = json_decode(file_get_contents('php://input'), true);
-$id = trim($body['id'] ?? '');
-
-if (empty($id)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Event ID is required to delete.']);
-    exit;
-}
-
-try {
-    $db = new Database();
-    $conn = $db->connect();
-
-    $stmt = $conn->prepare('DELETE FROM events WHERE id = ?');
-    $stmt->execute([$id]);
-
-    if ($stmt->rowCount() === 0) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'error' => 'Event not found.']);
+    if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed. Use DELETE']);
         exit;
     }
 
-    // Audit log
-    $stmtLog = $conn->prepare(
-        'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
-    );
-    $stmtLog->execute([$_SESSION['user_id'], 'DELETE', 'events', $id]);
+    if (empty($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+        exit;
+    }
 
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'Event was deleted successfully.',
-        'data' => ['id' => $id]
-    ]);
+    if ($_SESSION['role'] !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete events.']);
+        exit;
+    }
 
-} catch (PDOException $e) {
-    error_log('[events/delete] DB error: ' . $e->getMessage());
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Database error.']);
-}
+    $body = json_decode(file_get_contents('php://input'), true);
+    $id = trim($body['id'] ?? '');
+
+    if (empty($id)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Event ID is required to delete.']);
+        exit;
+    }
+
+    try {
+        $db = new Database();
+        $conn = $db->connect();
+
+        $stmt = $conn->prepare('DELETE FROM events WHERE id = ?');
+        $stmt->execute([$id]);
+
+        if ($stmt->rowCount() === 0) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Event not found.']);
+            exit;
+        }
+
+        // Audit log
+        $stmtLog = $conn->prepare(
+            'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
+        );
+        $stmtLog->execute([$_SESSION['user_id'], 'DELETE', 'events', $id]);
+
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Event was deleted successfully.',
+            'data' => ['id' => $id]
+        ]);
+
+    } catch (PDOException $e) {
+        error_log('[events/delete] DB error: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database error.']);
+    }
 ?>
