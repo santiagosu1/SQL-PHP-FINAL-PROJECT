@@ -2,19 +2,19 @@
     session_start();
     header('Content-Type: application/json');
     require_once __DIR__ . '/../config/database.php';
-    
+
     if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Method not allowed. Use DELETE']);
         exit;
     }
 
-    // Authorization: admin only
     if (empty($_SESSION['user_id'])) {
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Authentication required.']);
         exit;
     }
+
     if ($_SESSION['role'] !== 'admin') {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete events.']);
@@ -24,9 +24,11 @@
     $body = json_decode(file_get_contents('php://input'), true);
     $id = trim($body['id'] ?? '');
 
-    if (empty($id)) {
+    // Sanitization & validation
+    $id = htmlspecialchars($id, ENT_QUOTES, 'UTF-8');
+    if (empty($id) || !preg_match('/^[A-Za-z0-9\-\_]+$/', $id)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Event ID is required to delete.']);
+        echo json_encode(['success' => false, 'error' => 'Valid event ID is required to delete.']);
         exit;
     }
 
@@ -35,7 +37,6 @@
         $conn = $db->connect();
 
         $stmt = $conn->prepare('DELETE FROM events WHERE id = ?');
-
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() === 0) {
@@ -44,15 +45,22 @@
             exit;
         }
 
+        // Audit log
+        $stmtLog = $conn->prepare(
+            'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
+        );
+        $stmtLog->execute([$_SESSION['user_id'], 'DELETE', 'events', $id]);
+
         http_response_code(200);
         echo json_encode([
             'success' => true,
             'message' => 'Event was deleted successfully.',
-            'data'    => ['id' => $id]
+            'data' => ['id' => $id]
         ]);
 
     } catch (PDOException $e) {
+        error_log('[events/delete] DB error: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'Database error.']);
     }
 ?>

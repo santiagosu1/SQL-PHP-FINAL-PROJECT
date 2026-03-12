@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/User.php';
 
 // Only accept POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -51,18 +52,28 @@ try {
     }
 
     // ── Start session ─────────────────────────────────────────────────────────
-    session_regenerate_id(true);          // prevent session fixation
-    $_SESSION['user_id'] = $user['id'];
-    $_SESSION['role']    = $user['role'];
+    $loggedInUser = new User(
+        (int)$user['id'], 
+        $user['email'], 
+        $user['first_name'], 
+        $user['last_name'], 
+        $user['role']
+    );
+
+    // 
+    session_regenerate_id(true);          
+    $_SESSION['user_id'] = $loggedInUser->getId(); 
+    $_SESSION['role']    = $loggedInUser->getRole(); 
 
     echo json_encode([
         'success' => true,
         'data'    => [
-            'id'         => $user['id'],
-            'email'      => $user['email'],
-            'first_name' => $user['first_name'],
-            'last_name'  => $user['last_name'],
-            'role'       => $user['role'],
+            'id'         => $loggedInUser->getId(),
+            'email'      => $loggedInUser->getEmail(),
+            
+            'full_name'  => $loggedInUser->getFullName(), 
+            'role'       => $loggedInUser->getRole(),
+            'is_admin'   => $loggedInUser->isAdmin() 
         ],
         'message' => 'Login successful.',
     ]);

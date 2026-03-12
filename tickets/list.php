@@ -1,38 +1,41 @@
 <?php
+    session_start();
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/../config/database.php';
 
-header('Content-Type: application/json');
-require_once __DIR__ . '/../config/database.php';
-
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'error' => 'Method not allowed. Use GET.']);
-    exit;
-}
-
-$user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
-
-try {
-    $db = new Database();
-    $conn = $db->connect();
-
-    if ($user_id > 0) {
-        $stmt = $conn->prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY purchase_date DESC');
-        $stmt->execute([$user_id]);
-    } else {
-        $stmt = $conn->query('SELECT * FROM tickets ORDER BY purchase_date DESC');
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Method not allowed. Use GET.']);
+        exit;
     }
 
-    $tickets = $stmt->fetchAll();
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+        exit;
+    }
 
-    http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'data'    => $tickets,
-        'message' => 'Tickets have been getting correctly'
-    ]);
+    $user_id = (int)$_SESSION['user_id'];
 
-} catch (PDOException $e) {
-    http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
-}
+    try {
+        $db = new Database();
+        $conn = $db->connect();
+
+        $stmt = $conn->prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY purchase_date DESC');
+        $stmt->execute([$user_id]);
+
+        $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        http_response_code(200);
+        echo json_encode([
+            'success' => true,
+            'data'    => $tickets,
+            'message' => 'Tickets retrieved successfully.'
+        ]);
+
+    } catch (PDOException $e) {
+        error_log('[tickets/list] DB error: ' . $e->getMessage());
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database error.']);
+    }
 ?>
