@@ -21,17 +21,19 @@ SQL-PHP-FINAL-PROJECT/
 │   ├── login.php          # POST   — login, creates session
 │   ├── logout.php         # POST   — destroys session
 │   └── register.php       # POST   — register new user (role: user)
+├── classes/
+│   └── Event.php          # Event domain class (OOP — getAll, findById, getSalesSummary)
 ├── config/
 │   └── database.php       # Database class (OOP, PDO connection)
 ├── events/
 │   ├── create.php         # POST   — create event (protected)
 │   ├── delete.php         # DELETE — delete event (admin only)
-│   ├── list.php           # GET    — list all events
+│   ├── list.php           # GET    — list all events (uses Event class)
 │   └── update.php         # PUT    — update event (owner or admin)
 ├── tickets/
 │   ├── create.php         # POST   — purchase ticket (protected)
 │   ├── delete.php         # DELETE — cancel ticket (admin only)
-│   └── list.php           # GET    — list tickets
+│   └── list.php           # GET    — list tickets (JOIN + aggregate summary)
 └── sql/
     ├── schema.sql          # Table definitions
     ├── data.sql            # Seed data
@@ -233,7 +235,4 @@ Content-Type: application/json
 - Numeric inputs cast with `(int)` / `(float)`
 - `user_id` always taken from `$_SESSION`, never from request body
 - `session_regenerate_id(true)` on login to prevent session fixation
-
----
-
 

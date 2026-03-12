@@ -80,18 +80,22 @@
         $db = new Database();
         $conn = $db->connect();
 
-        $stmtCheck = $conn->prepare('SELECT id FROM events WHERE id = ?');
+        $stmtCheck = $conn->prepare('SELECT id, created_by FROM events WHERE id = ?');
         $stmtCheck->execute([$id]);
-        
-        if (!$stmtCheck->fetch()) {
+        $existingEvent = $stmtCheck->fetch();
+
+        if (!$existingEvent) {
             http_response_code(404);
             echo json_encode(['success' => false, 'error' => 'Event not found.']);
             exit;
         }
 
-        if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+        $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'admin';
+        $isOwner = (int)$_SESSION['user_id'] === (int)$existingEvent['created_by'];
+
+        if (!$isAdmin && !$isOwner) {
             http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Access denied. Only admins can update events.']);
+            echo json_encode(['success' => false, 'error' => 'Access denied. Only the event owner or an admin can update events.']);
             exit;
         }
 

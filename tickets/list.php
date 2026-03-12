@@ -18,18 +18,41 @@
     $user_id = (int)$_SESSION['user_id'];
 
     try {
-        $db = new Database();
+        $db   = new Database();
         $conn = $db->connect();
 
-        $stmt = $conn->prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY purchase_date DESC');
+        // JOIN query — ticket details with event info
+        $stmt = $conn->prepare(
+            'SELECT t.id, t.event_id, t.quantity, t.total_price, t.purchase_date,
+                    e.title AS event_title, e.event_date, e.venue, e.location
+             FROM tickets t
+             INNER JOIN events e ON e.id = t.event_id
+             WHERE t.user_id = ?
+             ORDER BY t.purchase_date DESC'
+        );
         $stmt->execute([$user_id]);
-
         $tickets = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Aggregate query — totals for this user
+        $stmtSummary = $conn->prepare(
+            'SELECT COUNT(*) AS total_orders,
+                    SUM(quantity) AS total_tickets,
+                    SUM(total_price) AS total_spent
+             FROM tickets
+             WHERE user_id = ?'
+        );
+        $stmtSummary->execute([$user_id]);
+        $summary = $stmtSummary->fetch(PDO::FETCH_ASSOC);
 
         http_response_code(200);
         echo json_encode([
             'success' => true,
             'data'    => $tickets,
+            'summary' => [
+                'total_orders'  => (int)$summary['total_orders'],
+                'total_tickets' => (int)$summary['total_tickets'],
+                'total_spent'   => (float)$summary['total_spent'],
+            ],
             'message' => 'Tickets retrieved successfully.'
         ]);
 

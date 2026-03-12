@@ -1,6 +1,7 @@
 <?php
     header('Content-Type: application/json');
     require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../classes/Event.php';
 
     if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         http_response_code(405);
@@ -19,15 +20,13 @@
     }
 
     try{
-        $db = new Database();
-        $conn = $db->connect();
+        $db       = new Database();
+        $conn     = $db->connect();
+        $eventObj = new Event($conn);
 
         if ($id !== '') {
-            
-            $stmt = $conn->prepare('SELECT * FROM events WHERE id = ?');
-            $stmt->execute([$id]);
 
-            $event = $stmt->fetch(PDO::FETCH_ASSOC);
+            $event = $eventObj->findById($id);
 
             if (!$event) {
                 http_response_code(404);
@@ -38,28 +37,25 @@
             http_response_code(200);
             echo json_encode([
                 'success' => true,
-                'data' => $event,
-                'message' => 'Event got correctly.'
+                'data'    => $event,
+                'message' => 'Event retrieved successfully.'
             ]);
 
         } else {
-            
-            $stmt = $conn->prepare('SELECT * FROM events ORDER BY event_date ASC');
-            $stmt->execute();
 
-            $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $events = $eventObj->getAll();
 
             http_response_code(200);
             echo json_encode([
                 'success' => true,
-                'data' => $events,
-                'message' => 'Events got correctly.'
+                'data'    => $events,
+                'message' => 'Events retrieved successfully.'
             ]);
         }
 
     } catch(PDOException $e) {
         error_log('[events/list] DB error: ' . $e->getMessage());
         http_response_code(500);
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        echo json_encode(['success' => false, 'error' => 'Database error.']);
     }
 ?>

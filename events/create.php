@@ -84,22 +84,24 @@
 
         $new_id = 'evt-' . rand(10000, 99999);
 
+        $created_by = (int)$_SESSION['user_id'];
+
         $stmt = $conn->prepare(
             'INSERT INTO events (
                 id, title, description, event_date, event_time, location, venue, 
-                price, category, available_tickets, sold_tickets
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                price, category, available_tickets, sold_tickets, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
 
         $stmt->execute([
             $new_id, $title, $description, $event_date, $event_time, $location, $venue,
-            $price, $category, $available_tick, $sold_tick
+            $price, $category, $available_tick, $sold_tick, $created_by
         ]);
 
         $stmtLog = $conn->prepare(
             'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
         );
-        $stmtLog->execute([$_SESSION['user_id'], 'CREATE', 'events', $new_id]);
+        $stmtLog->execute([$created_by, 'CREATE', 'events', $new_id]);
 
         http_response_code(201);
         echo json_encode([
