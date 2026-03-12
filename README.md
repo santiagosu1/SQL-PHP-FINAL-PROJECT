@@ -236,6 +236,4 @@ Content-Type: application/json
 
 ---
 
-## AI Usage Disclosure
 
-GitHub Copilot was used as a coding assistant for syntax suggestions, debugging, and code structure guidance. All logic was reviewed, understood, and validated by the author.
