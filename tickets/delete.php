@@ -1,5 +1,4 @@
 <?php
-
 session_start();
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/database.php';
@@ -10,12 +9,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
     exit;
 }
 
-// Authorization: admin only
 if (empty($_SESSION['user_id'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Authentication required.']);
     exit;
 }
+
 if ($_SESSION['role'] !== 'admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Access denied. Admin role required to delete tickets.']);
@@ -53,6 +52,12 @@ try {
     $stmtDelete = $conn->prepare('DELETE FROM tickets WHERE id = ?');
     $stmtDelete->execute([$id]);
 
+    // Audit log
+    $stmtLog = $conn->prepare(
+        'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
+    );
+    $stmtLog->execute([$_SESSION['user_id'], 'DELETE', 'tickets', (string)$id]);
+
     $stmtUpdateEvent = $conn->prepare(
         'UPDATE events 
          SET available_tickets = available_tickets + ?, 
@@ -67,10 +72,10 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Ticket cancelled successfully. Inventory was returned to the event.',
-        'data'    => [
+        'data' => [
             'deleted_ticket_id' => $id,
-            'event_id'          => $event_id,
-            'tickets_returned'  => $quantity
+            'event_id' => $event_id,
+            'tickets_returned' => $quantity
         ]
     ]);
 
@@ -78,7 +83,8 @@ try {
     if (isset($conn) && $conn->inTransaction()) {
         $conn->rollBack();
     }
+    error_log('[tickets/delete] DB error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+    echo json_encode(['success' => false, 'error' => 'Database error.']);
 }
 ?>

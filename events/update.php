@@ -1,99 +1,104 @@
 <?php
-    session_start();
-    header('Content-Type: application/json');
-    require_once __DIR__ . '/../config/database.php';
-    
-    if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
-        http_response_code(405);
-        echo json_encode(['success' => false, 'error' => 'Method not allowed. Use PUT']);
+session_start();
+header('Content-Type: application/json');
+require_once __DIR__ . '/../config/database.php';
+
+if ($_SERVER['REQUEST_METHOD'] !== 'PUT') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed. Use PUT']);
+    exit;
+}
+
+if (empty($_SESSION['user_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+    exit;
+}
+
+$body = json_decode(file_get_contents('php://input'), true);
+
+$id = trim($body['id'] ?? '');
+
+if (empty($id)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Event ID is required.']);
+    exit;
+}
+
+$title = trim($body['title'] ?? '');
+$description = trim($body['description'] ?? '');
+$event_date = trim($body['event_date'] ?? '');
+$event_time = trim($body['event_time'] ?? '');
+$price = isset($body['price']) ? (float)$body['price'] : 0.00;
+$location = trim($body['location'] ?? '');
+$venue = trim($body['venue'] ?? '');
+$category = trim($body['category'] ?? '');
+$available_tick = isset($body['available_tickets']) ? (int)$body['available_tickets'] : 0;
+$sold_tick = isset($body['sold_tickets']) ? (int)$body['sold_tickets'] : 0;
+
+if (empty($title) || empty($event_date)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Title and event_date are required.']);
+    exit;
+}
+
+try {
+    $db = new Database();
+    $conn = $db->connect();
+
+    $stmtOwner = $conn->prepare('SELECT created_by FROM events WHERE id = ?');
+    $stmtOwner->execute([$id]);
+    $eventRow = $stmtOwner->fetch();
+
+    if (!$eventRow) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Event not found.']);
         exit;
     }
 
-    // Authentication check
-    if (empty($_SESSION['user_id'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Authentication required.']);
+    if ($_SESSION['role'] !== 'admin' && (int)$_SESSION['user_id'] !== (int)$eventRow['created_by']) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Access denied. You can only update events you created.']);
         exit;
     }
 
-    $body = json_decode(file_get_contents('php://input'), true);
+    $stmt = $conn->prepare(
+        'UPDATE events 
+         SET title = ?, description = ?, event_date = ?, event_time = ?, location = ?, venue = ?, price = ?, category = ?, available_tickets = ?, sold_tickets = ?
+         WHERE id = ?'
+    );
 
-    $id = trim($body['id'] ?? '');
+    $stmt->execute([
+        $title, $description, $event_date, $event_time, $location, $venue,
+        $price, $category, $available_tick, $sold_tick, $id
+    ]);
 
-    if (empty($id)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Event ID is required.']);
+    if ($stmt->rowCount() === 0) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'error' => 'Event not found or no new changes were made.']);
         exit;
     }
 
-    $title = trim($body['title'] ?? '');
-    $description = trim($body['description'] ?? '');
-    $event_date = trim($body['event_date'] ?? '');
-    $event_time = trim($body['event_time'] ?? '');
-    $price = isset($body['price']) ? (float)$body['price'] : 0.00;
-    $location = trim($body['location'] ?? '');
-    $venue = trim($body['venue'] ?? '');
-    $category = trim($body['category'] ?? '');
-    $available_tick = isset($body['available_tickets']) ? (int)$body['available_tickets'] : 0;
-    $sold_tick = isset($body['sold_tickets']) ? (int)$body['sold_tickets'] : 0;
+    // Audit log
+    $stmtLog = $conn->prepare(
+        'INSERT INTO audit_logs (user_id, action, entity, entity_id) VALUES (?, ?, ?, ?)'
+    );
+    $stmtLog->execute([$_SESSION['user_id'], 'UPDATE', 'events', $id]);
 
-    if (empty($title) || empty($event_date)) {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Title and event_date are required.']);
-        exit;
-    }
+    http_response_code(200);
+    echo json_encode([
+        'success' => true,
+        'message' => 'Event was updated successfully.',
+        'data' => [
+            'id' => $id,
+            'title' => $title,
+            'event_date' => $event_date
+        ]
+    ]);
 
-    try {
-        $db = new Database();
-        $conn = $db->connect();
-
-        // Authorization: owner-only — admins can update any event, users only their own
-        $stmtOwner = $conn->prepare('SELECT created_by FROM events WHERE id = ?');
-        $stmtOwner->execute([$id]);
-        $eventRow = $stmtOwner->fetch();
-
-        if (!$eventRow) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Event not found.']);
-            exit;
-        }
-
-        if ($_SESSION['role'] !== 'admin' && (int)$_SESSION['user_id'] !== (int)$eventRow['created_by']) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'error' => 'Access denied. You can only update events you created.']);
-            exit;
-        }
-
-        $stmt = $conn->prepare(
-            'UPDATE events 
-             SET title = ?, description = ?, event_date = ?, event_time = ?, location = ?, venue = ?, price = ?, category = ?, available_tickets = ?, sold_tickets = ?
-             WHERE id = ?'
-        );
-        
-        $stmt->execute([
-            $title, $description, $event_date, $event_time, $location, $venue, $price, $category, $available_tick, $sold_tick, 
-            $id
-        ]);
-
-        if ($stmt->rowCount() === 0) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'error' => 'Event not found or no new changes were made.']);
-            exit;
-        }
-
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Event was updated successfully.',
-            'data'    => [
-                'id'         => $id,
-                'title'      => $title,
-                'event_date' => $event_date
-            ]
-        ]);
-
-    } catch (PDOException $e) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
-    }
+} catch (PDOException $e) {
+    error_log('[events/update] DB error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode(['success' => false, 'error' => 'Database error.']);
+}
 ?>

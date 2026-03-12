@@ -7,7 +7,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed. Use GET.']);
     exit;
-}
+
+    }
 
 $user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
 
